@@ -9,10 +9,12 @@ import StatisticsCard from "@/components/ui/StatisticsCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import FlashcardModal from "@/components/flashcards/FlashcardModal";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, BookOpen, Brain, BarChart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,59 +55,93 @@ const Dashboard = () => {
             </Dialog>
           </div>
           
-          {/* Statistics and Search */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2">
-              <SearchBar 
-                onSearch={handleSearch} 
-                placeholder="Search by question or answer..." 
-                className="mb-6"
-              />
+          {/* Dashboard Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="glass-card shadow-sm">
+                <CardContent className="p-4">
+                  <SearchBar 
+                    onSearch={handleSearch} 
+                    placeholder="Search cards..." 
+                    className="mb-4"
+                  />
+                </CardContent>
+              </Card>
+              
+              <StatisticsCard />
               
               {!isMobile && stats.dueToday > 0 && (
-                <div className="glass-card p-4 flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">You have {stats.dueToday} cards to review today</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {stats.reviewedToday > 0
-                        ? `You've already reviewed ${stats.reviewedToday} cards today.`
-                        : "You haven't reviewed any cards yet today."}
-                    </p>
+                <Card className="glass-card shadow-sm p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-medium">Review Cards</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {stats.dueToday} cards due today
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => navigate("/study")}
+                      className="shrink-0"
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Study
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={() => navigate("/study")}
-                    className="shrink-0"
-                  >
-                    Study Now
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
+                </Card>
               )}
             </div>
             
-            <StatisticsCard />
-          </div>
-          
-          {/* Mobile Study Reminder */}
-          {isMobile && stats.dueToday > 0 && (
-            <div className="glass-card p-4 mb-6 text-center">
-              <h3 className="font-medium mb-2">
-                You have {stats.dueToday} cards to review today
-              </h3>
-              <Button 
-                onClick={() => navigate("/study")}
-                className="w-full"
-              >
-                Study Now
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              {/* Mobile Study Reminder */}
+              {isMobile && stats.dueToday > 0 && (
+                <Card className="glass-card p-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-medium">Review Cards</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {stats.dueToday} cards due today
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => navigate("/study")}
+                      className="shrink-0"
+                      size="sm"
+                    >
+                      Study
+                    </Button>
+                  </div>
+                </Card>
+              )}
+              
+              <Tabs defaultValue="all" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="all">All Cards</TabsTrigger>
+                  <TabsTrigger value="recent">Recent</TabsTrigger>
+                  <TabsTrigger value="due">Due Today</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="all" className="mt-0">
+                  <Dialog>
+                    <FlashcardGrid searchQuery={searchQuery} />
+                  </Dialog>
+                </TabsContent>
+                
+                <TabsContent value="recent" className="mt-0">
+                  <Dialog>
+                    <FlashcardGrid searchQuery={searchQuery} filterBy="recent" />
+                  </Dialog>
+                </TabsContent>
+                
+                <TabsContent value="due" className="mt-0">
+                  <Dialog>
+                    <FlashcardGrid searchQuery={searchQuery} filterBy="due" />
+                  </Dialog>
+                </TabsContent>
+              </Tabs>
             </div>
-          )}
-          
-          {/* Flashcards */}
-          <Dialog>
-            <FlashcardGrid searchQuery={searchQuery} />
-          </Dialog>
+          </div>
         </div>
       </main>
       

@@ -7,16 +7,21 @@ import { useToast } from "@/hooks/use-toast";
 interface User {
   id: string;
   username: string;
+  // Added profile picture for Google users
+  profilePicture?: string;
 }
 
 interface UserCredentials {
   username: string;
   password: string;
+  // Optional for Google login
+  profilePicture?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   signup: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -76,6 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const userData: User = {
               id: uuidv4(),
               username: user.username,
+              profilePicture: user.profilePicture,
             };
             
             setUser(userData);
@@ -88,6 +94,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           reject(new Error("Login failed. Please try again."));
         }
       }, 800); // Simulate network delay
+    });
+  };
+  
+  const loginWithGoogle = async (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Simulate Google login API call
+      setTimeout(() => {
+        try {
+          // Generate a random Google user
+          const googleUser = {
+            id: uuidv4(),
+            username: `user${Math.floor(Math.random() * 10000)}@gmail.com`,
+            profilePicture: "https://ui-avatars.com/api/?background=0D8ABC&color=fff",
+          };
+          
+          // Add to users database if not exists
+          const users = getUserDatabase();
+          if (!users.some(u => u.username === googleUser.username)) {
+            users.push({
+              username: googleUser.username,
+              password: uuidv4(), // Random password as we won't use it
+              profilePicture: googleUser.profilePicture,
+            });
+            localStorage.setItem("users", JSON.stringify(users));
+          }
+          
+          setUser(googleUser);
+          localStorage.setItem("currentUser", JSON.stringify(googleUser));
+          resolve();
+        } catch (err) {
+          reject(new Error("Google login failed. Please try again."));
+        }
+      }, 1000); // Simulate network delay
     });
   };
   
@@ -108,6 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const newUser: UserCredentials = {
             username,
             password,
+            profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
           };
           
           // Add to "database"
@@ -118,6 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const userData: User = {
             id: uuidv4(),
             username,
+            profilePicture: newUser.profilePicture,
           };
           
           setUser(userData);
@@ -142,6 +183,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value: AuthContextType = {
     user,
     login,
+    loginWithGoogle,
     signup,
     logout,
     isAuthenticated: !!user,

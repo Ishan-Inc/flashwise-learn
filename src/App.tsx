@@ -9,6 +9,7 @@ import { FlashcardProvider } from "@/hooks/useFlashcards";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Study from "./pages/Study";
+import Create from "./pages/Create";
 import NotFound from "./pages/NotFound";
 import LoginForm from "./components/auth/LoginForm";
 import SignupForm from "./components/auth/SignupForm";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/study" element={<Study />} />
+              <Route path="/create" element={<Create />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="*" element={<NotFound />} />

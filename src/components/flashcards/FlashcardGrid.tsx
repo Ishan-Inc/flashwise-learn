@@ -19,19 +19,42 @@ export interface Flashcard {
 
 interface FlashcardGridProps {
   searchQuery?: string;
+  filterBy?: "all" | "recent" | "due";
 }
 
-const FlashcardGrid = ({ searchQuery = "" }: FlashcardGridProps) => {
+const FlashcardGrid = ({ searchQuery = "", filterBy = "all" }: FlashcardGridProps) => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { flashcards, isLoading, error } = useFlashcards();
   const isMobile = useIsMobile();
 
-  // Filter flashcards based on search query
-  const filteredFlashcards = flashcards.filter(
-    (card) =>
+  // Filter flashcards based on search query and filterBy
+  const filteredFlashcards = flashcards.filter(card => {
+    // Apply search filter
+    const matchesSearch = 
       card.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      card.answer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      card.answer.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Apply tab filter
+    if (filterBy === "all") return true;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (filterBy === "due") {
+      return card.nextReviewDate <= today;
+    }
+    
+    if (filterBy === "recent") {
+      // Show cards created or reviewed in the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const lastReviewedDate = new Date(card.lastReviewed);
+      return lastReviewedDate >= sevenDaysAgo;
+    }
+    
+    return true;
+  });
 
   if (isLoading) {
     return (
@@ -72,7 +95,9 @@ const FlashcardGrid = ({ searchQuery = "" }: FlashcardGridProps) => {
     return (
       <div className="mt-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-medium">My Flashcards</h2>
+          <h2 className="text-xl font-medium">
+            {searchQuery ? "Search Results" : filterBy === "due" ? "Due Today" : filterBy === "recent" ? "Recent Cards" : "My Flashcards"}
+          </h2>
           <div className="flex space-x-2">
             <Button
               variant={viewMode === "grid" ? "default" : "outline"}
@@ -96,7 +121,11 @@ const FlashcardGrid = ({ searchQuery = "" }: FlashcardGridProps) => {
         <Card className="flex flex-col items-center justify-center p-8 glass-card h-64">
           <h3 className="text-xl font-medium mb-2">No matching flashcards</h3>
           <p className="text-muted-foreground mb-6 text-center">
-            Try adjusting your search query
+            {searchQuery 
+              ? "Try adjusting your search query" 
+              : filterBy === "due" 
+                ? "No cards due for review today" 
+                : "No cards in this category"}
           </p>
         </Card>
       </div>
@@ -104,15 +133,19 @@ const FlashcardGrid = ({ searchQuery = "" }: FlashcardGridProps) => {
   }
 
   return (
-    <div className="mt-8 animate-fade-in">
+    <div className="mt-0 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-medium">
-          {searchQuery ? "Search Results" : "My Flashcards"}
-          {searchQuery && (
-            <span className="text-muted-foreground text-sm ml-2">
-              ({filteredFlashcards.length})
-            </span>
-          )}
+          {searchQuery 
+            ? "Search Results" 
+            : filterBy === "due" 
+              ? "Due Today" 
+              : filterBy === "recent" 
+                ? "Recent Cards" 
+                : "My Flashcards"}
+          <span className="text-muted-foreground text-sm ml-2">
+            ({filteredFlashcards.length})
+          </span>
         </h2>
         {!isMobile && (
           <div className="flex space-x-2">
@@ -139,7 +172,7 @@ const FlashcardGrid = ({ searchQuery = "" }: FlashcardGridProps) => {
       <div
         className={
           viewMode === "grid"
-            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
             : "space-y-4"
         }
       >

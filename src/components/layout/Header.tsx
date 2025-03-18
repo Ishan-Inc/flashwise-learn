@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Lightbulb, Moon, Plus } from "lucide-react";
+import { Menu, X, Lightbulb, Plus } from "lucide-react";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -26,10 +26,10 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Only include pages that are fully implemented
   const navLinks = [
     { name: "Dashboard", path: "/dashboard", authRequired: true },
-    { name: "Study", path: "/study", authRequired: true },
-    { name: "About", path: "/about", authRequired: false },
+    { name: "Study", path: "/study", authRequired: true }
   ];
 
   return (
