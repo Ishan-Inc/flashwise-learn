@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   DialogContent,
   DialogHeader,
@@ -8,7 +8,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mic, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { Flashcard } from "./FlashcardGrid";
 
@@ -33,8 +32,6 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
     flashcard?.difficulty || "medium"
   );
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordTarget, setRecordTarget] = useState<"question" | "answer" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({
     question: "",
@@ -42,66 +39,6 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
   });
   
   const { createFlashcard, updateFlashcard } = useFlashcards();
-  
-  // Speech recognition setup
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
-
-  useEffect(() => {
-    if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
-      
-      recognitionInstance.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0])
-          .map((result) => result.transcript)
-          .join("");
-        
-        if (recordTarget === "question") {
-          setQuestion(transcript);
-        } else if (recordTarget === "answer") {
-          setAnswer(transcript);
-        }
-      };
-      
-      recognitionInstance.onend = () => {
-        setIsRecording(false);
-        setRecordTarget(null);
-      };
-      
-      setRecognition(recognitionInstance);
-    }
-    
-    return () => {
-      if (recognition) {
-        recognition.stop();
-      }
-    };
-  }, []);
-
-  const startSpeechRecognition = (target: "question" | "answer") => {
-    if (!recognition) return;
-    
-    try {
-      setRecordTarget(target);
-      setIsRecording(true);
-      recognition.start();
-    } catch (error) {
-      console.error("Error starting speech recognition:", error);
-      setIsRecording(false);
-      setRecordTarget(null);
-    }
-  };
-
-  const stopSpeechRecognition = () => {
-    if (recognition && isRecording) {
-      recognition.stop();
-      setIsRecording(false);
-      setRecordTarget(null);
-    }
-  };
 
   const validateInputs = () => {
     const newErrors = {
@@ -169,23 +106,9 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
         
         <div className="grid gap-6 py-4">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="question" className="text-sm font-medium">
-                Question
-              </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-full ${recordTarget === "question" && isRecording ? "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400 animate-pulse" : ""}`}
-                onClick={() => recordTarget === "question" && isRecording 
-                  ? stopSpeechRecognition() 
-                  : startSpeechRecognition("question")}
-                disabled={isRecording && recordTarget !== "question"}
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
-            </div>
+            <Label htmlFor="question" className="text-sm font-medium">
+              Question
+            </Label>
             <Textarea
               id="question"
               value={question}
@@ -199,23 +122,9 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
           </div>
           
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="answer" className="text-sm font-medium">
-                Answer
-              </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-full ${recordTarget === "answer" && isRecording ? "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400 animate-pulse" : ""}`}
-                onClick={() => recordTarget === "answer" && isRecording 
-                  ? stopSpeechRecognition() 
-                  : startSpeechRecognition("answer")}
-                disabled={isRecording && recordTarget !== "answer"}
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
-            </div>
+            <Label htmlFor="answer" className="text-sm font-medium">
+              Answer
+            </Label>
             <Textarea
               id="answer"
               value={answer}
@@ -257,7 +166,7 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || isRecording}>
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
