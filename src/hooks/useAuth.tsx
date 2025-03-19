@@ -1,245 +1,257 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
 
 // Types
-interface User {
+interface AuthUser {
   id: string;
   username: string;
-  // Added profile picture for Google users
-  profilePicture?: string;
-}
-
-interface UserCredentials {
-  username: string;
-  password: string;
-  // Optional for Google login
   profilePicture?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  user: AuthUser | null;
+  login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  signup: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  signup: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   updateProfile: (data: { username?: string; profilePicture?: string }) => Promise<void>;
+  isLoading: boolean;
 }
 
 // Create Context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user database for demo purposes
-const getUserDatabase = (): UserCredentials[] => {
-  const savedUsers = localStorage.getItem("users");
-  if (savedUsers) {
-    return JSON.parse(savedUsers);
-  }
+// Convert Supabase User to AuthUser
+const formatUser = (user: User | null, profile?: any): AuthUser | null => {
+  if (!user) return null;
   
-  // Create sample user
-  const sampleUsers: UserCredentials[] = [
-    {
-      username: "demo",
-      password: "password",
-    },
-  ];
-  
-  localStorage.setItem("users", JSON.stringify(sampleUsers));
-  return sampleUsers;
+  return {
+    id: user.id,
+    username: profile?.username || user.email || 'Anonymous User',
+    profilePicture: profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.username || user.email || 'Anonymous')}&background=random`
+  };
 };
 
 // Provider Component
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Check if user is already logged in
-  useEffect(() => {
-    const loggedInUser = localStorage.getItem("currentUser");
-    if (loggedInUser) {
-      try {
-        setUser(JSON.parse(loggedInUser));
-      } catch (err) {
-        console.error("Failed to parse user data:", err);
-        localStorage.removeItem("currentUser");
-      }
+  // Get user profile data from Supabase
+  const getUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return null;
     }
+  };
+  
+  // Check for session on mount and set up auth state listener
+  useEffect(() => {
+    const initAuth = async () => {
+      setIsLoading(true);
+      
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Set up auth state change listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (session?.user) {
+            const profile = await getUserProfile(session.user.id);
+            setUser(formatUser(session.user, profile));
+          } else {
+            setUser(null);
+          }
+          setIsLoading(false);
+        }
+      );
+      
+      // Set initial user if session exists
+      if (session?.user) {
+        const profile = await getUserProfile(session.user.id);
+        setUser(formatUser(session.user, profile));
+      }
+      
+      setIsLoading(false);
+      
+      // Cleanup subscription
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+    
+    initAuth();
   }, []);
   
-  const login = async (username: string, password: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      // Simulate API call delay
-      setTimeout(() => {
-        try {
-          const users = getUserDatabase();
-          const user = users.find(
-            (u) => u.username === username && u.password === password
-          );
-          
-          if (user) {
-            const userData: User = {
-              id: uuidv4(),
-              username: user.username,
-              profilePicture: user.profilePicture,
-            };
-            
-            setUser(userData);
-            localStorage.setItem("currentUser", JSON.stringify(userData));
-            
-            toast({
-              title: "Logged In",
-              description: `Welcome back, ${userData.username}!`,
-            });
-            
-            resolve();
-          } else {
-            reject(new Error("Invalid username or password"));
-          }
-        } catch (err) {
-          reject(new Error("Login failed. Please try again."));
-        }
-      }, 800); // Simulate network delay
-    });
+  const login = async (email: string, password: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        const profile = await getUserProfile(data.user.id);
+        setUser(formatUser(data.user, profile));
+        
+        toast({
+          title: "Logged In",
+          description: `Welcome back, ${profile?.username || data.user.email}!`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message || "Please check your credentials and try again.",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const loginWithGoogle = async (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      // Simulate Google login API call
-      setTimeout(() => {
-        try {
-          // Generate a random Google user
-          const googleUser = {
-            id: uuidv4(),
-            username: `user${Math.floor(Math.random() * 10000)}@gmail.com`,
-            profilePicture: "https://ui-avatars.com/api/?background=0D8ABC&color=fff",
-          };
-          
-          // Add to users database if not exists
-          const users = getUserDatabase();
-          if (!users.some(u => u.username === googleUser.username)) {
-            users.push({
-              username: googleUser.username,
-              password: uuidv4(), // Random password as we won't use it
-              profilePicture: googleUser.profilePicture,
-            });
-            localStorage.setItem("users", JSON.stringify(users));
-          }
-          
-          setUser(googleUser);
-          localStorage.setItem("currentUser", JSON.stringify(googleUser));
-          
-          toast({
-            title: "Logged In with Google",
-            description: `Welcome, ${googleUser.username}!`,
-          });
-          
-          resolve();
-        } catch (err) {
-          reject(new Error("Google login failed. Please try again."));
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
         }
-      }, 1000); // Simulate network delay
-    });
+      });
+      
+      if (error) throw error;
+      
+      // No need to set user here - the onAuthStateChange listener will handle that
+      toast({
+        title: "Redirecting to Google",
+        description: "Please complete the authentication process.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Google Login Failed",
+        description: error.message || "There was a problem with Google login.",
+      });
+      throw error;
+    }
   };
   
-  const signup = async (username: string, password: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      // Simulate API call delay
-      setTimeout(() => {
-        try {
-          const users = getUserDatabase();
-          
-          // Check if username already exists
-          if (users.some((u) => u.username === username)) {
-            reject(new Error("Username already exists"));
-            return;
+  const signup = async (email: string, password: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: email.split('@')[0],
           }
-          
-          // Create new user
-          const newUser: UserCredentials = {
-            username,
-            password,
-            profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
-          };
-          
-          // Add to "database"
-          users.push(newUser);
-          localStorage.setItem("users", JSON.stringify(users));
-          
-          // Login the new user
-          const userData: User = {
-            id: uuidv4(),
-            username,
-            profilePicture: newUser.profilePicture,
-          };
-          
-          setUser(userData);
-          localStorage.setItem("currentUser", JSON.stringify(userData));
-          
-          toast({
-            title: "Account Created",
-            description: "Your account has been successfully created.",
-          });
-          
-          resolve();
-        } catch (err) {
-          reject(new Error("Registration failed. Please try again."));
         }
-      }, 800); // Simulate network delay
-    });
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        // The trigger will create the profile
+        toast({
+          title: "Account Created",
+          description: "Your account has been successfully created.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Signup Failed",
+        description: error.message || "Registration failed. Please try again.",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const updateProfile = async (data: { username?: string; profilePicture?: string }): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        try {
-          if (!user) {
-            reject(new Error("No user logged in"));
-            return;
-          }
-          
-          const updatedUser = {
-            ...user,
-            ...data,
-          };
-          
-          // Update user in "database"
-          const users = getUserDatabase();
-          const userIndex = users.findIndex(u => u.username === user.username);
-          
-          if (userIndex >= 0 && data.username) {
-            users[userIndex].username = data.username;
-            if (data.profilePicture) {
-              users[userIndex].profilePicture = data.profilePicture;
-            }
-            localStorage.setItem("users", JSON.stringify(users));
-          }
-          
-          // Update current user
-          setUser(updatedUser);
-          localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-          
-          toast({
-            title: "Profile Updated",
-            description: "Your profile has been successfully updated.",
-          });
-          
-          resolve();
-        } catch (err) {
-          reject(new Error("Failed to update profile. Please try again."));
-        }
-      }, 500);
-    });
+    try {
+      if (!user) {
+        throw new Error("No user logged in");
+      }
+      
+      setIsLoading(true);
+      
+      const updates = {
+        id: user.id,
+        username: data.username,
+        avatar_url: data.profilePicture,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Update local user state
+      setUser({
+        ...user,
+        username: data.username || user.username,
+        profilePicture: data.profilePicture || user.profilePicture,
+      });
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Failed to update profile. Please try again.",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const logout = (): void => {
-    setUser(null);
-    localStorage.removeItem("currentUser");
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
+  const logout = async (): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      setUser(null);
+      
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: error.message || "Failed to log out. Please try again.",
+      });
+      throw error;
+    }
   };
   
   const value: AuthContextType = {
@@ -250,6 +262,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout,
     isAuthenticated: !!user,
     updateProfile,
+    isLoading,
   };
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

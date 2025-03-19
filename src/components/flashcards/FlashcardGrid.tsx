@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import FlashcardCard from "./FlashcardCard";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Grid2X2, List, Plus, Loader2 } from "lucide-react";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { DialogTrigger } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface Flashcard {
   id: string;
@@ -21,14 +23,16 @@ export interface Flashcard {
 interface FlashcardGridProps {
   searchQuery?: string;
   filterBy?: "all" | "recent" | "due";
+  groupFilter?: string;
 }
 
-const FlashcardGrid = ({ searchQuery = "", filterBy = "all" }: FlashcardGridProps) => {
+const FlashcardGrid = ({ searchQuery = "", filterBy = "all", groupFilter = "all" }: FlashcardGridProps) => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { flashcards, isLoading, error } = useFlashcards();
   const isMobile = useIsMobile();
+  const { isAuthenticated } = useAuth();
 
-  // Filter flashcards based on search query and filterBy
+  // Filter flashcards based on search query, filterBy, and groupFilter
   const filteredFlashcards = flashcards.filter(card => {
     // Apply search filter
     const matchesSearch = 
@@ -36,6 +40,11 @@ const FlashcardGrid = ({ searchQuery = "", filterBy = "all" }: FlashcardGridProp
       card.answer.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (!matchesSearch) return false;
+    
+    // Apply group filter
+    if (groupFilter !== "all" && card.group !== groupFilter) {
+      return false;
+    }
     
     // Apply tab filter
     if (filterBy === "all") return true;
@@ -143,7 +152,9 @@ const FlashcardGrid = ({ searchQuery = "", filterBy = "all" }: FlashcardGridProp
               ? "Due Today" 
               : filterBy === "recent" 
                 ? "Recent Cards" 
-                : "My Flashcards"}
+                : groupFilter !== "all"
+                  ? groupFilter
+                  : "My Flashcards"}
           <span className="text-muted-foreground text-sm ml-2">
             ({filteredFlashcards.length})
           </span>
@@ -173,7 +184,7 @@ const FlashcardGrid = ({ searchQuery = "", filterBy = "all" }: FlashcardGridProp
       <div
         className={
           viewMode === "grid"
-            ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
             : "space-y-4"
         }
       >

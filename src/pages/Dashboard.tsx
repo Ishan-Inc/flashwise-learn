@@ -7,8 +7,8 @@ import FlashcardGrid from "@/components/flashcards/FlashcardGrid";
 import SearchBar from "@/components/ui/SearchBar";
 import StatisticsCard from "@/components/ui/StatisticsCard";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
-import { BookOpen } from "lucide-react";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { BookOpen, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,21 +21,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import FlashcardModal from "@/components/flashcards/FlashcardModal";
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const { stats, groups } = useFlashcards();
   const isMobile = useIsMobile();
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
+  const [showFlashcardDialog, setShowFlashcardDialog] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isLoading]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -48,14 +50,17 @@ const Dashboard = () => {
       <main className="flex-grow pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto animate-fade-in">
           {/* Dashboard Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <Button 
-              onClick={() => navigate("/create")}
-              className="rounded-full"
-            >
-              Create Flashcard
-            </Button>
+            <Dialog open={showFlashcardDialog} onOpenChange={setShowFlashcardDialog}>
+              <DialogTrigger asChild>
+                <Button className="rounded-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Flashcard
+                </Button>
+              </DialogTrigger>
+              <FlashcardModal onClose={() => setShowFlashcardDialog(false)} />
+            </Dialog>
           </div>
           
           {/* Dashboard Content */}
@@ -124,13 +129,15 @@ const Dashboard = () => {
                   >
                     Profile Settings
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="justify-start" 
-                    onClick={() => navigate("/create")}
-                  >
-                    Create Flashcard
-                  </Button>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="justify-start"
+                      onClick={() => setShowFlashcardDialog(true)}
+                    >
+                      Create Flashcard
+                    </Button>
+                  </DialogTrigger>
                 </div>
               </Card>
             </div>
@@ -169,7 +176,8 @@ const Dashboard = () => {
                   <Dialog>
                     <FlashcardGrid 
                       searchQuery={searchQuery} 
-                      filterBy="all" 
+                      filterBy="all"
+                      groupFilter={selectedGroup}
                     />
                   </Dialog>
                 </TabsContent>
@@ -178,7 +186,8 @@ const Dashboard = () => {
                   <Dialog>
                     <FlashcardGrid 
                       searchQuery={searchQuery} 
-                      filterBy="recent" 
+                      filterBy="recent"
+                      groupFilter={selectedGroup}
                     />
                   </Dialog>
                 </TabsContent>
@@ -187,7 +196,8 @@ const Dashboard = () => {
                   <Dialog>
                     <FlashcardGrid 
                       searchQuery={searchQuery} 
-                      filterBy="due" 
+                      filterBy="due"
+                      groupFilter={selectedGroup}
                     />
                   </Dialog>
                 </TabsContent>

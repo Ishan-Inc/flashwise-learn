@@ -18,13 +18,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Separator } from "@/components/ui/separator";
 
 const LoginForm = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, isLoading: authLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,23 +32,14 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      if (!username.trim() || !password.trim()) {
-        throw new Error("Please enter both username and password");
+      if (!email.trim() || !password.trim()) {
+        throw new Error("Please enter both email and password");
       }
 
-      await login(username, password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back to FlashWise!",
-      });
+      await login(email, password);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: err.message || "Please check your credentials and try again.",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -58,18 +49,9 @@ const LoginForm = () => {
     try {
       setIsLoading(true);
       await loginWithGoogle();
-      toast({
-        title: "Login Successful",
-        description: "Welcome back to FlashWise!",
-      });
-      navigate("/dashboard");
+      // No need to navigate - the OAuth redirect will handle this
     } catch (err: any) {
       setError(err.message || "Google login failed. Please try again.");
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: err.message || "There was a problem with Google login.",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +79,7 @@ const LoginForm = () => {
             variant="outline" 
             className="w-full h-11 flex items-center justify-center space-x-2"
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" className="h-5 w-5">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -115,16 +97,16 @@ const LoginForm = () => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading || authLoading}
               className="h-11"
-              autoComplete="username"
+              autoComplete="email"
             />
           </div>
           <div className="space-y-2">
@@ -143,7 +125,7 @@ const LoginForm = () => {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
+              disabled={isLoading || authLoading}
               className="h-11"
               autoComplete="current-password"
             />
@@ -153,7 +135,7 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full h-11" 
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
           >
             {isLoading ? (
               <>
