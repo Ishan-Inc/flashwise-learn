@@ -5,10 +5,11 @@ import FlashcardCard from "./FlashcardCard";
 import { Button } from "@/components/ui/button";
 import { Grid2X2, List, Plus, Loader2 } from "lucide-react";
 import { useFlashcards } from "@/hooks/useFlashcards";
-import { DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import FlashcardModal from "./FlashcardModal";
 
 export interface Flashcard {
   id: string;
@@ -31,6 +32,7 @@ const FlashcardGrid = ({ searchQuery = "", filterBy = "all", groupFilter = "all"
   const { flashcards, isLoading, error } = useFlashcards();
   const isMobile = useIsMobile();
   const { isAuthenticated } = useAuth();
+  const [showFlashcardDialog, setShowFlashcardDialog] = useState(false);
 
   // Filter flashcards based on search query, filterBy, and groupFilter
   const filteredFlashcards = flashcards.filter(card => {
@@ -91,12 +93,17 @@ const FlashcardGrid = ({ searchQuery = "", filterBy = "all", groupFilter = "all"
         <p className="text-muted-foreground mb-6 text-center">
           Create your first flashcard to start learning
         </p>
-        <DialogTrigger asChild>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Flashcard
-          </Button>
-        </DialogTrigger>
+        <Dialog open={showFlashcardDialog} onOpenChange={setShowFlashcardDialog}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setShowFlashcardDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Flashcard
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <FlashcardModal onClose={() => setShowFlashcardDialog(false)} />
+          </DialogContent>
+        </Dialog>
       </Card>
     );
   }

@@ -7,7 +7,7 @@ import FlashcardGrid from "@/components/flashcards/FlashcardGrid";
 import SearchBar from "@/components/ui/SearchBar";
 import StatisticsCard from "@/components/ui/StatisticsCard";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { BookOpen, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFlashcards } from "@/hooks/useFlashcards";
@@ -59,7 +59,9 @@ const Dashboard = () => {
                   Create Flashcard
                 </Button>
               </DialogTrigger>
-              <FlashcardModal onClose={() => setShowFlashcardDialog(false)} />
+              <DialogContent className="sm:max-w-[600px]">
+                <FlashcardModal onClose={() => setShowFlashcardDialog(false)} />
+              </DialogContent>
             </Dialog>
           </div>
           
@@ -129,15 +131,13 @@ const Dashboard = () => {
                   >
                     Profile Settings
                   </Button>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="justify-start"
-                      onClick={() => setShowFlashcardDialog(true)}
-                    >
-                      Create Flashcard
-                    </Button>
-                  </DialogTrigger>
+                  <Button 
+                    variant="outline" 
+                    className="justify-start"
+                    onClick={() => setShowFlashcardDialog(true)}
+                  >
+                    Create Flashcard
+                  </Button>
                 </div>
               </Card>
             </div>
@@ -173,33 +173,27 @@ const Dashboard = () => {
                 </TabsList>
                 
                 <TabsContent value="all" className="mt-0">
-                  <Dialog>
-                    <FlashcardGrid 
-                      searchQuery={searchQuery} 
-                      filterBy="all"
-                      groupFilter={selectedGroup}
-                    />
-                  </Dialog>
+                  <FlashcardGrid 
+                    searchQuery={searchQuery} 
+                    filterBy="all"
+                    groupFilter={selectedGroup}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="recent" className="mt-0">
-                  <Dialog>
-                    <FlashcardGrid 
-                      searchQuery={searchQuery} 
-                      filterBy="recent"
-                      groupFilter={selectedGroup}
-                    />
-                  </Dialog>
+                  <FlashcardGrid 
+                    searchQuery={searchQuery} 
+                    filterBy="recent"
+                    groupFilter={selectedGroup}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="due" className="mt-0">
-                  <Dialog>
-                    <FlashcardGrid 
-                      searchQuery={searchQuery} 
-                      filterBy="due"
-                      groupFilter={selectedGroup}
-                    />
-                  </Dialog>
+                  <FlashcardGrid 
+                    searchQuery={searchQuery} 
+                    filterBy="due"
+                    groupFilter={selectedGroup}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
