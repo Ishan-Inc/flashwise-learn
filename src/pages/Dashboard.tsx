@@ -7,22 +7,28 @@ import FlashcardGrid from "@/components/flashcards/FlashcardGrid";
 import SearchBar from "@/components/ui/SearchBar";
 import StatisticsCard from "@/components/ui/StatisticsCard";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import FlashcardModal from "@/components/flashcards/FlashcardModal";
-import { Plus, ArrowRight, BookOpen, Brain, BarChart } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
+import { BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const { stats } = useFlashcards();
+  const { stats, groups } = useFlashcards();
   const isMobile = useIsMobile();
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -44,15 +50,12 @@ const Dashboard = () => {
           {/* Dashboard Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-              <DialogTrigger asChild>
-                <Button className="rounded-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Flashcard
-                </Button>
-              </DialogTrigger>
-              <FlashcardModal onClose={() => setShowCreateModal(false)} />
-            </Dialog>
+            <Button 
+              onClick={() => navigate("/create")}
+              className="rounded-full"
+            >
+              Create Flashcard
+            </Button>
           </div>
           
           {/* Dashboard Content */}
@@ -66,6 +69,26 @@ const Dashboard = () => {
                     placeholder="Search cards..." 
                     className="mb-4"
                   />
+                  
+                  <div className="mt-4">
+                    <label htmlFor="group-filter" className="block text-sm font-medium mb-2">
+                      Filter by Group
+                    </label>
+                    <Select
+                      value={selectedGroup}
+                      onValueChange={setSelectedGroup}
+                    >
+                      <SelectTrigger id="group-filter">
+                        <SelectValue placeholder="All Groups" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Groups</SelectItem>
+                        {groups.map((group) => (
+                          <SelectItem key={group} value={group}>{group}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardContent>
               </Card>
               
@@ -90,6 +113,26 @@ const Dashboard = () => {
                   </div>
                 </Card>
               )}
+              
+              <Card className="glass-card shadow-sm p-4">
+                <div className="flex flex-col space-y-3">
+                  <h3 className="font-medium">Quick Links</h3>
+                  <Button 
+                    variant="outline" 
+                    className="justify-start" 
+                    onClick={() => navigate("/profile")}
+                  >
+                    Profile Settings
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="justify-start" 
+                    onClick={() => navigate("/create")}
+                  >
+                    Create Flashcard
+                  </Button>
+                </div>
+              </Card>
             </div>
             
             {/* Main Content */}
@@ -124,19 +167,28 @@ const Dashboard = () => {
                 
                 <TabsContent value="all" className="mt-0">
                   <Dialog>
-                    <FlashcardGrid searchQuery={searchQuery} />
+                    <FlashcardGrid 
+                      searchQuery={searchQuery} 
+                      filterBy="all" 
+                    />
                   </Dialog>
                 </TabsContent>
                 
                 <TabsContent value="recent" className="mt-0">
                   <Dialog>
-                    <FlashcardGrid searchQuery={searchQuery} filterBy="recent" />
+                    <FlashcardGrid 
+                      searchQuery={searchQuery} 
+                      filterBy="recent" 
+                    />
                   </Dialog>
                 </TabsContent>
                 
                 <TabsContent value="due" className="mt-0">
                   <Dialog>
-                    <FlashcardGrid searchQuery={searchQuery} filterBy="due" />
+                    <FlashcardGrid 
+                      searchQuery={searchQuery} 
+                      filterBy="due" 
+                    />
                   </Dialog>
                 </TabsContent>
               </Tabs>

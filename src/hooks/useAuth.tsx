@@ -25,6 +25,7 @@ interface AuthContextType {
   signup: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateProfile: (data: { username?: string; profilePicture?: string }) => Promise<void>;
 }
 
 // Create Context
@@ -86,6 +87,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             
             setUser(userData);
             localStorage.setItem("currentUser", JSON.stringify(userData));
+            
+            toast({
+              title: "Logged In",
+              description: `Welcome back, ${userData.username}!`,
+            });
+            
             resolve();
           } else {
             reject(new Error("Invalid username or password"));
@@ -122,6 +129,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           setUser(googleUser);
           localStorage.setItem("currentUser", JSON.stringify(googleUser));
+          
+          toast({
+            title: "Logged In with Google",
+            description: `Welcome, ${googleUser.username}!`,
+          });
+          
           resolve();
         } catch (err) {
           reject(new Error("Google login failed. Please try again."));
@@ -163,11 +176,60 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           setUser(userData);
           localStorage.setItem("currentUser", JSON.stringify(userData));
+          
+          toast({
+            title: "Account Created",
+            description: "Your account has been successfully created.",
+          });
+          
           resolve();
         } catch (err) {
           reject(new Error("Registration failed. Please try again."));
         }
       }, 800); // Simulate network delay
+    });
+  };
+  
+  const updateProfile = async (data: { username?: string; profilePicture?: string }): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          if (!user) {
+            reject(new Error("No user logged in"));
+            return;
+          }
+          
+          const updatedUser = {
+            ...user,
+            ...data,
+          };
+          
+          // Update user in "database"
+          const users = getUserDatabase();
+          const userIndex = users.findIndex(u => u.username === user.username);
+          
+          if (userIndex >= 0 && data.username) {
+            users[userIndex].username = data.username;
+            if (data.profilePicture) {
+              users[userIndex].profilePicture = data.profilePicture;
+            }
+            localStorage.setItem("users", JSON.stringify(users));
+          }
+          
+          // Update current user
+          setUser(updatedUser);
+          localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+          
+          toast({
+            title: "Profile Updated",
+            description: "Your profile has been successfully updated.",
+          });
+          
+          resolve();
+        } catch (err) {
+          reject(new Error("Failed to update profile. Please try again."));
+        }
+      }, 500);
     });
   };
   
@@ -187,6 +249,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signup,
     logout,
     isAuthenticated: !!user,
+    updateProfile,
   };
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

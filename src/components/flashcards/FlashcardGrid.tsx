@@ -15,6 +15,7 @@ export interface Flashcard {
   difficulty: "easy" | "medium" | "hard";
   lastReviewed: string;
   nextReviewDate: string;
+  group?: string;
 }
 
 interface FlashcardGridProps {

@@ -12,12 +12,15 @@ export interface Flashcard {
   difficulty: "easy" | "medium" | "hard";
   lastReviewed: string;
   nextReviewDate: string;
+  group?: string;
 }
 
 export interface FlashcardInput {
   question: string;
   answer: string;
   difficulty: "easy" | "medium" | "hard";
+  group?: string;
+  nextReviewDate?: string;
 }
 
 interface FlashcardStats {
@@ -31,10 +34,13 @@ interface FlashcardContextType {
   isLoading: boolean;
   error: string | null;
   stats: FlashcardStats;
+  groups: string[];
   createFlashcard: (flashcard: FlashcardInput) => Promise<void>;
   updateFlashcard: (flashcard: Flashcard) => Promise<void>;
   deleteFlashcard: (id: string) => Promise<void>;
   reviewFlashcard: (id: string, difficulty: "easy" | "medium" | "hard") => Promise<void>;
+  createGroup: (name: string) => Promise<void>;
+  deleteGroup: (name: string) => Promise<void>;
 }
 
 // Create context
@@ -71,14 +77,26 @@ const isToday = (dateString: string): boolean => {
 // Provider component
 export const FlashcardProvider = ({ children }: { children: React.ReactNode }) => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
-  // Load flashcards from localStorage on initial render
+  // Load flashcards and groups from localStorage on initial render
   useEffect(() => {
     try {
       const savedFlashcards = localStorage.getItem("flashcards");
+      const savedGroups = localStorage.getItem("flashcard_groups");
+      
+      if (savedGroups) {
+        setGroups(JSON.parse(savedGroups));
+      } else {
+        // Default groups
+        const defaultGroups = ["Math", "Science", "Languages"];
+        setGroups(defaultGroups);
+        localStorage.setItem("flashcard_groups", JSON.stringify(defaultGroups));
+      }
+      
       if (savedFlashcards) {
         setFlashcards(JSON.parse(savedFlashcards));
       } else {
@@ -89,6 +107,7 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
             question: "What is the capital of France?",
             answer: "Paris",
             difficulty: "easy",
+            group: "Languages",
             lastReviewed: new Date().toISOString(),
             nextReviewDate: addDays(new Date(), getNextReviewDays("easy")).toISOString(),
           },
@@ -97,6 +116,7 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
             question: "What is 2 + 2?",
             answer: "4",
             difficulty: "easy",
+            group: "Math",
             lastReviewed: new Date().toISOString(),
             nextReviewDate: addDays(new Date(), getNextReviewDays("easy")).toISOString(),
           },
@@ -105,6 +125,7 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
             question: "What's the formula for area of a circle?",
             answer: "πr²",
             difficulty: "medium",
+            group: "Math",
             lastReviewed: new Date().toISOString(),
             nextReviewDate: addDays(new Date(), getNextReviewDays("medium")).toISOString(),
           },
@@ -128,6 +149,13 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
     }
   }, [flashcards, isLoading]);
   
+  // Update localStorage whenever groups change
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem("flashcard_groups", JSON.stringify(groups));
+    }
+  }, [groups, isLoading]);
+  
   // Calculate statistics
   const stats: FlashcardStats = {
     totalCards: flashcards.length,
@@ -148,7 +176,8 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
         id: uuidv4(),
         ...flashcardInput,
         lastReviewed: new Date().toISOString(),
-        nextReviewDate: addDays(new Date(), getNextReviewDays(flashcardInput.difficulty)).toISOString(),
+        nextReviewDate: flashcardInput.nextReviewDate || 
+          addDays(new Date(), getNextReviewDays(flashcardInput.difficulty)).toISOString(),
       };
       
       setFlashcards(prev => [...prev, newFlashcard]);
@@ -175,11 +204,11 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
           card.id === updatedFlashcard.id
             ? {
                 ...updatedFlashcard,
-                // Only update nextReviewDate if the difficulty changed
-                nextReviewDate:
-                  card.difficulty !== updatedFlashcard.difficulty
+                // Only update nextReviewDate if explicitly provided or if difficulty changed
+                nextReviewDate: updatedFlashcard.nextReviewDate || 
+                  (card.difficulty !== updatedFlashcard.difficulty
                     ? addDays(new Date(), getNextReviewDays(updatedFlashcard.difficulty)).toISOString()
-                    : updatedFlashcard.nextReviewDate,
+                    : card.nextReviewDate),
               }
             : card
         )
@@ -249,15 +278,75 @@ export const FlashcardProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
   
+  // Create a new group
+  const createGroup = async (name: string): Promise<void> => {
+    try {
+      if (groups.includes(name)) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "A group with this name already exists.",
+        });
+        return;
+      }
+      
+      setGroups(prev => [...prev, name]);
+      
+      toast({
+        title: "Group Created",
+        description: `Group "${name}" has been created successfully.`,
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create group.",
+      });
+      throw err;
+    }
+  };
+  
+  // Delete a group
+  const deleteGroup = async (name: string): Promise<void> => {
+    try {
+      // First update any flashcards in this group
+      setFlashcards(prev =>
+        prev.map(card =>
+          card.group === name
+            ? { ...card, group: undefined }
+            : card
+        )
+      );
+      
+      // Then remove the group
+      setGroups(prev => prev.filter(g => g !== name));
+      
+      toast({
+        title: "Group Deleted",
+        description: `Group "${name}" has been deleted successfully.`,
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete group.",
+      });
+      throw err;
+    }
+  };
+  
   const value: FlashcardContextType = {
     flashcards,
     isLoading,
     error,
     stats,
+    groups,
     createFlashcard,
     updateFlashcard,
     deleteFlashcard,
     reviewFlashcard,
+    createGroup,
+    deleteGroup,
   };
   
   return (

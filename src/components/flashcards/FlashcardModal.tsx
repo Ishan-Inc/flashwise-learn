@@ -17,9 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { format, addDays } from "date-fns";
+import { Loader2, CalendarIcon } from "lucide-react";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { Flashcard } from "./FlashcardGrid";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface FlashcardModalProps {
   flashcard?: Flashcard;
@@ -32,13 +40,17 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
     flashcard?.difficulty || "medium"
   );
+  const [group, setGroup] = useState<string>(flashcard?.group || "");
+  const [reviewDate, setReviewDate] = useState<Date | undefined>(
+    flashcard?.nextReviewDate ? new Date(flashcard.nextReviewDate) : undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({
     question: "",
     answer: "",
   });
   
-  const { createFlashcard, updateFlashcard } = useFlashcards();
+  const { createFlashcard, updateFlashcard, groups } = useFlashcards();
 
   const validateInputs = () => {
     const newErrors = {
@@ -73,6 +85,8 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
           question,
           answer,
           difficulty,
+          group,
+          nextReviewDate: reviewDate ? reviewDate.toISOString() : addDays(new Date(), 1).toISOString(),
         });
       } else {
         // Create new flashcard
@@ -80,6 +94,8 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
           question,
           answer,
           difficulty,
+          group,
+          nextReviewDate: reviewDate ? reviewDate.toISOString() : addDays(new Date(), 1).toISOString(),
         });
       }
       onClose();
@@ -137,23 +153,76 @@ const FlashcardModal = ({ flashcard, onClose }: FlashcardModalProps) => {
             )}
           </div>
           
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="difficulty" className="text-sm font-medium">
+                Difficulty
+              </Label>
+              <Select
+                value={difficulty}
+                onValueChange={(value) => setDifficulty(value as "easy" | "medium" | "hard")}
+              >
+                <SelectTrigger id="difficulty">
+                  <SelectValue placeholder="Select difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="group" className="text-sm font-medium">
+                Group
+              </Label>
+              <Select
+                value={group}
+                onValueChange={setGroup}
+              >
+                <SelectTrigger id="group">
+                  <SelectValue placeholder="Select a group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="difficulty" className="text-sm font-medium">
-              Difficulty
+            <Label htmlFor="reviewDate" className="text-sm font-medium">
+              Review Date
             </Label>
-            <Select
-              value={difficulty}
-              onValueChange={(value) => setDifficulty(value as "easy" | "medium" | "hard")}
-            >
-              <SelectTrigger id="difficulty">
-                <SelectValue placeholder="Select difficulty" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !reviewDate && "text-muted-foreground"
+                  )}
+                  id="reviewDate"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {reviewDate ? format(reviewDate, "PPP") : <span>Select a review date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={reviewDate}
+                  onSelect={setReviewDate}
+                  initialFocus
+                  disabled={(date) => date < new Date()}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         
